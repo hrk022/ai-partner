@@ -32,7 +32,7 @@ class StreamHandler(BaseCallbackHandler):
 def load_quotes_from_db(db_path="multi_quote.db"):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
-    c.execute("SELECT TEXT FROM quotes")
+    c.execute("SELECT text FROM quotes")
     rows = c.fetchall()
     conn.close()
     return [r[0] for r in rows if r[0] and len(r[0]) > 0]
