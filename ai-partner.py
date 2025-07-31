@@ -19,6 +19,10 @@ api_key = os.getenv("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = api_key
 os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
 
+# -------- Safe DB Path --------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "multi_quote.db")
+
 # -------- StreamHandler for Token Streaming --------
 class StreamHandler(BaseCallbackHandler):
     def __init__(self, container):
@@ -29,14 +33,16 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text + "▌")
 
 # -------- Web Scraper Function ----------
-def load_quotes_from_db(db_path="multi_quote.db"):
+def load_quotes_from_db(db_path=DB_PATH):
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Database not found at: {db_path}")
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute("SELECT text FROM quotes")
     rows = c.fetchall()
     conn.close()
     return [r[0] for r in rows if r[0] and len(r[0]) > 0]
-    
+
 # -------- Vector Store Creation ----------
 def create_vectorstore(texts):
     if not texts:
@@ -54,7 +60,6 @@ def create_vectorstore(texts):
     return vectorstore.as_retriever()
 
 # -------- Initialize QA Chain ----------
-
 chattiness = st.sidebar.slider(
     "Chattiness Level 💬",
     min_value = 1,
@@ -63,12 +68,10 @@ chattiness = st.sidebar.slider(
     help="Adjust how flirty and verbose she is. 1 = Calm, 10 = Wild"
 )
 temperature = 0.3 + (chattiness - 1) * 0.07
-
 max_tokens = st.sidebar.slider("Maximum Tokens", min_value=10, max_value=600, value=30, step=10)
 
 st.sidebar.markdown(f"🌡️ Temperature: `{temperature:.2f}`")
 st.sidebar.markdown(f"✏️ Max Tokens: `{max_tokens}`")
-
 
 def initialize_chain(retriever):
     llm = ChatOpenAI(
@@ -113,7 +116,7 @@ if "chat_history" not in st.session_state:
 
 if "qa_chain" not in st.session_state:
     with st.spinner("Scraping romantic lines and building memory..."):
-        scraped_lines = load_quotes_from_db("multi_quote.db")
+        scraped_lines = load_quotes_from_db()
         retriever = create_vectorstore(scraped_lines)
         st.session_state.qa_chain = initialize_chain(retriever)
 
