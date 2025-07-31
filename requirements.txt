@@ -1,0 +1,9 @@
+streamlit
+python-dotenv
+sqlite3-binary
+torch
+langchain
+langchain-community
+openai
+faiss-cpu
+sentence-transformers
