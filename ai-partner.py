@@ -64,7 +64,7 @@ chattiness = st.sidebar.slider(
 )
 temperature = 0.3 + (chattiness - 1) * 0.07
 
-max_tokens = st.sidebar.slider("Maximum Tokens", min_value=10, max_value=200, value=30, step=10)
+max_tokens = st.sidebar.slider("Maximum Tokens", min_value=10, max_value=600, value=30, step=10)
 
 st.sidebar.markdown(f"🌡️ Temperature: `{temperature:.2f}`")
 st.sidebar.markdown(f"✏️ Max Tokens: `{max_tokens}`")
