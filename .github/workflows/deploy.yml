@@ -17,12 +17,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          lfs: true  # 👈 Important: Fetch LFS files too
+          lfs: true  # 👈 ENABLE LFS DURING CLONE
 
-      - name: Set up Git LFS
+      - name: Install Git LFS
         run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
           git lfs install
-          git lfs pull  # 👈 Important: Pull LFS-tracked files
+
+      - name: Pull LFS files
+        run: git lfs pull
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -38,4 +42,3 @@ jobs:
         run: |
           pip install streamlit  # Optional if already in requirements.txt
           streamlit run ai-partner.py
-
