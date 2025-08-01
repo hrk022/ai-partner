@@ -91,7 +91,7 @@ def initialize_chain(retriever):
             "Always respond as if you're speaking directly to your lover. "
             "If no context helps, be poetic or passionate."
         ),
-        HumanMessagePromptTemplate.from_template("{question}")
+        HumanMessagePromptTemplate.from_template("{context}\n\n{question}")
     ])
 
     return ConversationalRetrievalChain.from_llm(
