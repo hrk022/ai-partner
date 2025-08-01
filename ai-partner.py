@@ -1,8 +1,8 @@
 import os
+import json
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import streamlit as st
 from dotenv import load_dotenv
-import sqlite3
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.chat_models import ChatOpenAI
@@ -19,9 +19,9 @@ api_key = os.getenv("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = api_key
 os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
 
-# -------- Safe DB Path --------
+# -------- Safe Paths --------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "multi_quote.db")
+QUOTES_JSON_PATH = os.path.join(BASE_DIR, "quotes.json")
 
 # -------- StreamHandler for Token Streaming --------
 class StreamHandler(BaseCallbackHandler):
@@ -32,16 +32,76 @@ class StreamHandler(BaseCallbackHandler):
         self.text += token
         self.container.markdown(self.text + "▌")
 
-# -------- Web Scraper Function ----------
-def load_quotes_from_db(db_path=DB_PATH):
-    if not os.path.exists(db_path):
-        raise FileNotFoundError(f"Database not found at: {db_path}")
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    c.execute("SELECT text FROM quotes")
-    rows = c.fetchall()
-    conn.close()
-    return [r[0] for r in rows if r[0] and len(r[0]) > 0]
+# -------- Fallback Quotes --------
+FALLBACK_QUOTES = [
+    "You mean the world to me, darling 💖",
+    "Every moment with you feels like magic ✨",
+    "You're my sunshine on the cloudiest days ☀️",
+    "I love you more than words can express 💕",
+    "You make my heart skip a beat every time 💓",
+    "Being with you feels like coming home 🏠💕",
+    "You're the missing piece to my puzzle 🧩❤️",
+    "Every day with you is a beautiful adventure 🌟",
+    "Your smile lights up my entire world 😊💖",
+    "I fall in love with you more each day 🥰",
+    "You're my favorite hello and hardest goodbye 👋💔",
+    "With you, every moment is a precious gift 🎁💝",
+    "You're not just my love, you're my best friend 👫💕",
+    "In your arms, I've found my safe haven 🤗💖",
+    "You make ordinary moments extraordinary ✨💫",
+    "My love for you grows stronger every day 📈❤️",
+    "You're the reason I believe in fairy tales 🧚‍♀️💖",
+    "Every love song reminds me of you 🎵💕",
+    "You're my today, my tomorrow, my always 🕰️💖",
+    "With you, I've found my forever person 👫♾️"
+]
+
+# -------- Load Quotes from JSON --------
+def load_quotes_from_json(json_path=QUOTES_JSON_PATH):
+    """Load quotes from JSON file with comprehensive error handling"""
+    try:
+        # Check if file exists
+        if not os.path.exists(json_path):
+            st.warning(f"📄 Quotes file not found at: {json_path}")
+            st.info("🔄 Using fallback quotes...")
+            return FALLBACK_QUOTES
+        
+        # Check file size
+        file_size = os.path.getsize(json_path)
+        if file_size == 0:
+            st.warning("📄 Quotes file is empty")
+            return FALLBACK_QUOTES
+        
+        # Load JSON data
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Extract quotes
+        if isinstance(data, dict):
+            quotes = data.get('quotes', [])
+        elif isinstance(data, list):
+            quotes = data
+        else:
+            st.warning("📄 Invalid JSON format")
+            return FALLBACK_QUOTES
+        
+        # Validate quotes
+        valid_quotes = [quote.strip() for quote in quotes if isinstance(quote, str) and len(quote.strip()) > 0]
+        
+        if not valid_quotes:
+            st.warning("📄 No valid quotes found in file")
+            return FALLBACK_QUOTES
+        
+        # Success message
+        st.success(f"✅ Loaded {len(valid_quotes)} quotes from JSON file ({file_size} bytes)")
+        return valid_quotes
+        
+    except json.JSONDecodeError as e:
+        st.error(f"📄 JSON parsing error: {str(e)}")
+        return FALLBACK_QUOTES
+    except Exception as e:
+        st.error(f"📄 Error loading quotes: {str(e)}")
+        return FALLBACK_QUOTES
 
 # -------- Vector Store Creation ----------
 def create_vectorstore(texts):
@@ -115,10 +175,14 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 if "qa_chain" not in st.session_state:
-    with st.spinner("Scraping romantic lines and building memory..."):
-        scraped_lines = load_quotes_from_db()
-        retriever = create_vectorstore(scraped_lines)
-        st.session_state.qa_chain = initialize_chain(retriever)
+    with st.spinner("💝 Loading romantic memories..."):
+        try:
+            romantic_quotes = load_quotes_from_json()
+            retriever = create_vectorstore(romantic_quotes)
+            st.session_state.qa_chain = initialize_chain(retriever)
+        except Exception as e:
+            st.error(f"💔 Failed to initialize: {str(e)}")
+            st.stop()
 
 # Input and Response
 user_input = st.chat_input("Start your conversation, love...")
